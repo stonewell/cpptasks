@@ -1,5 +1,5 @@
 /*
- * 
+ *
  * Copyright 2002-2004 The Ant-Contrib project
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ import net.sf.antcontrib.cpptasks.OptimizationEnum;;
 /**
  * An abstract Compiler implementation which uses an external program to
  * perform the compile.
- * 
+ *
  * @author Adam Murdoch
  */
 public abstract class CommandLineCompiler extends AbstractCompiler {
@@ -68,11 +68,11 @@ public abstract class CommandLineCompiler extends AbstractCompiler {
 			Boolean rtti, OptimizationEnum optimization);
     /**
      * Adds command-line arguments for include directories.
-     * 
+     *
      * If relativeArgs is not null will add corresponding relative paths
      * include switches to that vector (for use in building a configuration
      * identifier that is consistent between machines).
-     * 
+     *
      * @param baseDirPath Base directory path.
      * @param includeDirs
      *            Array of include directory paths
@@ -128,7 +128,7 @@ public abstract class CommandLineCompiler extends AbstractCompiler {
     }
     /**
      * Compiles a source file.
-     * 
+     *
      */
     public void compile(CCTask task, File outputDir, String[] sourceFiles,
             String[] args, String[] endArgs, boolean relentless,
@@ -232,8 +232,8 @@ public abstract class CommandLineCompiler extends AbstractCompiler {
         }
     }
     protected CompilerConfiguration createConfiguration(final CCTask task,
-            final LinkType linkType, 
-			final ProcessorDef[] baseDefs, 
+            final LinkType linkType,
+			final ProcessorDef[] baseDefs,
 			final CompilerDef specificDef,
 			final TargetDef targetPlatform,
 			final VersionInfo versionInfo) {
@@ -405,7 +405,7 @@ public abstract class CommandLineCompiler extends AbstractCompiler {
     }
     /**
      * Obtains the same compiler, but with libtool set
-     * 
+     *
      * Default behavior is to ignore libtool
      */
     public final CommandLineCompiler getLibtoolCompiler() {
@@ -433,5 +433,55 @@ public abstract class CommandLineCompiler extends AbstractCompiler {
     }
     protected final void setCommand(String command) {
         this.command = command;
+    }
+
+    /**
+     * Build an make file buffer
+     *
+     */
+    protected String genMakefileBuffer(CCTask task, File outputDir, String[] sourceFiles,
+            String[] args, String[] endArgs, boolean relentless,
+            CommandLineCompilerConfiguration config, ProgressMonitor monitor)
+            throws BuildException {
+        String command = getCommand();
+
+        StringBuffer sb_opt_args = new StringBuffer();
+        sb_opt_args.append("OPT_ARGS := \\").append(System.getProperty("line.separator"));
+        for (int j = 0; j < args.length; j++) {
+            sb_opt_args.append("\t").append(args[j]).append("\\").append(System.getProperty("line.separator"));
+        }
+        sb_opt_args.append(System.getProperty("line.separator"));
+
+        StringBuffer sb_opt_end_args = new StringBuffer();
+        sb_opt_end_args.append("OPT_END_ARGS := \\").append(System.getProperty("line.separator"));
+        for (int j = 0; j < endArgs.length; j++) {
+            sb_opt_end_args.append("\t").append(endArgs[j]).append("\\").append(System.getProperty("line.separator"));
+        }
+        sb_opt_end_args.append(System.getProperty("line.separator"));
+
+        StringBuffer sb_src = new StringBuffer();
+        sb_src.append("SOURCES := \\").append(System.getProperty("line.separator"));
+        for (int sourceIndex = 0; sourceIndex < sourceFiles.length; sourceIndex++) {
+            String[] output = getOutputFileNames(sourceFiles[sourceIndex], null);
+
+            if (output.length == 0) continue;
+
+            sb_src.append(output[0]).append(":").append(sourceFiles[sourceIndex])
+                    .append(System.getProperty("line.separator"))
+                    .append("\t")
+                    .append(libtool ? "libtool " : "")
+                    .append(command).append(" ")
+                    .append("$(OPT_ARGS) ")
+                    .append("-o $@ $< ")
+                    .append("$(OPT_END_ARGS)")
+                    .append(System.getProperty("line.separator"));
+        }
+        sb_src.append(System.getProperty("line.separator"));
+
+        return new StringBuffer()
+                .append(sb_opt_args).append(System.getProperty("line.separator"))
+                .append(sb_opt_end_args).append(System.getProperty("line.separator"))
+                .append(sb_src).append(System.getProperty("line.separator"))
+                .toString();
     }
 }
